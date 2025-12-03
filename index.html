@@ -73,6 +73,15 @@
       border: 1px solid #dc2626;
       color: #7f1d1d;
     }
+    .warning {
+      margin-top: 8px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #f97316;
+      background: #ffedd5;
+      color: #9a3412;
+      font-weight: 500;
+    }
     .muted {
       color: #6b7280;
       font-size: 0.9rem;
@@ -117,7 +126,8 @@
     <strong>Reel factor</strong> = (H + B) × H × T × 0.262<br>
     <strong>Length (ft)</strong> = Reel factor ÷ (cable diameter in inches)²<br>
     where A = flange diameter, B = drum diameter (from circumference), T = traverse, and<br>
-    H = (A − B) / 2 − U, with U = unused flange clearance <em>each side</em>.
+    H = (A − B) / 2 − U, with U = unused flange clearance <em>each side</em>.<br>
+    Bend radius check uses minimum bend radius ≈ <strong>8 × cable OD</strong>, so minimum drum diameter ≈ <strong>16 × OD</strong>.
   </p>
 
   <div class="card">
@@ -191,6 +201,7 @@
 
     <div id="capacityText" class="muted"></div>
     <div id="fitResult" class="result" style="display:none;"></div>
+    <div id="bendResult" class="warning" style="display:none;"></div>
   </div>
 
   <script>
@@ -202,6 +213,7 @@
     const footageInput = document.getElementById('footage');
     const capacityText = document.getElementById('capacityText');
     const fitResult = document.getElementById('fitResult');
+    const bendResult = document.getElementById('bendResult');
     const calcBtn = document.getElementById('calcBtn');
     const reelPresetSelect = document.getElementById('reelPreset');
 
@@ -240,6 +252,10 @@
       const requested = parseFloat(footageInput.value);
       const U = parseFloat(unusedFlangeSelect.value); // unused flange each side
 
+      bendResult.style.display = 'none';
+      fitResult.style.display = 'none';
+      capacityText.textContent = '';
+
       if (!A || !Bcirc || !T || !D || !requested || !U) {
         alert('Please fill in flange, traverse, drum circumference, unused flange, cable size, and footage.');
         return;
@@ -262,23 +278,4 @@
 
       // Quabbin reel factor and capacity
       const reelFactor = (H + B) * H * T * 0.262;
-      const capacity = reelFactor / (D * D);
-      const roundedCap = Math.round(capacity);
-
-      capacityText.textContent =
-        `Reel factor: ${reelFactor.toFixed(3)}  |  Approx. capacity: ${roundedCap.toLocaleString()} ft ` +
-        `(H = ${H.toFixed(2)}", B = ${B.toFixed(2)}", U = ${U.toFixed(2)}" each side)`;
-
-      if (requested <= capacity) {
-        fitResult.textContent = `✅ Yes – ${requested.toLocaleString()} ft will fit on this reel.`;
-        fitResult.className = 'result ok';
-      } else {
-        fitResult.textContent =
-          `❌ No – ${requested.toLocaleString()} ft will NOT fit. Estimated max is about ${roundedCap.toLocaleString()} ft.`;
-        fitResult.className = 'result not-ok';
-      }
-      fitResult.style.display = 'block';
-    });
-  </script>
-</body>
-</html>
+      const capacity =
