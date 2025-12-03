@@ -278,4 +278,54 @@
 
       // Quabbin reel factor and capacity
       const reelFactor = (H + B) * H * T * 0.262;
-      const capacity =
+      const capacity = reelFactor / (D * D);
+      const roundedCap = Math.round(capacity);
+
+      capacityText.textContent =
+        `Reel factor: ${reelFactor.toFixed(3)}  |  Approx. capacity: ${roundedCap.toLocaleString()} ft ` +
+        `(H = ${H.toFixed(2)}", B = ${B.toFixed(2)}", U = ${U.toFixed(2)}" each side)`;
+
+
+      // --- Bend radius check ---
+      // Min bend radius ≈ 8 × OD  => min drum diameter = 16 × OD
+      const minBendRadius = 8 * D;
+      const minDrumDia = 2 * minBendRadius; // 16 * D
+
+      let bendWarning = '';
+      let bendOK = true;
+
+      if (B < minDrumDia) {
+        bendOK = false;
+        bendWarning =
+          `⚠️ Bend radius violation: min drum diameter for this cable is about ` +
+          `${minDrumDia.toFixed(2)}", but this reel's drum is ${B.toFixed(2)}".`;
+      } else {
+        bendWarning =
+          `✅ Bend radius OK: min drum diameter ~ ${minDrumDia.toFixed(2)}", ` +
+          `reel drum is ${B.toFixed(2)}".`;
+      }
+
+      bendResult.textContent = bendWarning;
+      bendResult.style.display = 'block';
+
+      // Fit / not-fit message, with bend check considered
+      if (requested <= capacity && bendOK) {
+        fitResult.textContent = `✅ Yes – ${requested.toLocaleString()} ft will fit on this reel and meets bend radius.`;
+        fitResult.className = 'result ok';
+      } else if (requested <= capacity && !bendOK) {
+        fitResult.textContent =
+          `⚠️ Volume OK (fits by footage), but bend radius is too tight. ` +
+          `Not recommended on this reel.`;
+        fitResult.className = 'result not-ok';
+      } else {
+        fitResult.textContent =
+          `❌ No – ${requested.toLocaleString()} ft will NOT fit by volume. ` +
+          `Estimated max is about ${roundedCap.toLocaleString()} ft.`;
+        fitResult.className = 'result not-ok';
+      }
+
+      fitResult.style.display = 'block';
+    });
+  </script>
+</body>
+</html>
