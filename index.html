@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Reel Capacity Calculator</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 700px;
+      margin: 40px auto;
+      padding: 0 16px;
+      line-height: 1.4;
+    }
+    h1 {
+      font-size: 1.75rem;
+      margin-bottom: 0.25rem;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-top: 16px;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: 500;
+    }
+    input, select {
+      width: 100%;
+      padding: 6px 8px;
+      margin-top: 4px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 16px;
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button#calcBtn {
+      background: #2563eb;
+      color: white;
+    }
+    .result {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 6px;
+      font-weight: 500;
+    }
+    .ok {
+      background: #dcfce7;
+      border: 1px solid #16a34a;
+      color: #166534;
+    }
+    .not-ok {
+      background: #fee2e2;
+      border: 1px solid #dc2626;
+      color: #7f1d1d;
+    }
+    .muted {
+      color: #6b7280;
+      font-size: 0.9rem;
+    }
+    .row {
+      display: flex;
+      gap: 12px;
+    }
+    .row > div {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <h1>Reel Capacity Calculator</h1>
+  <p class="muted">
+    Uses formula: F = C × (A² − B²) / (12 × D²)<br>
+    A = flange diameter (in), B = drum diameter (in), C = traverse (in), D = cable OD (in).<br>
+    You enter <strong>drum circumference</strong>, which is converted to diameter internally
+    (B = circumference / π).
+  </p>
+
+  <div class="card">
+    <h2>Reel Dimensions</h2>
+    <div class="row">
+      <div>
+        <label for="flange">Flange diameter A (inches)</label>
+        <input id="flange" type="number" step="0.01" value="21.5">
+      </div>
+      <div>
+        <label for="drum">Drum circumference B (inches)</label>
+        <input id="drum" type="number" step="0.01" placeholder="e.g. 40">
+      </div>
+    </div>
+
+    <label for="traverse">Traverse / width C (inches)</label>
+    <input id="traverse" type="number" step="0.01" value="39">
+  </div>
+
+  <div class="card">
+    <h2>Cable</h2>
+
+    <label for="awg">Cable size (AWG / kcmil)</label>
+    <select id="awg">
+      <option value="">-- select size --</option>
+      <!-- values are OD in inches -->
+      <option value="0.22086614">8 AWG</option>
+      <option value="0.26023622">6 AWG</option>
+      <option value="0.32952756">4 AWG</option>
+      <option value="0.35905512">3 AWG</option>
+      <option value="0.39055118">2 AWG</option>
+      <option value="0.45">1 AWG</option>
+      <option value="0.48937008">1/0 AWG</option>
+      <option value="0.53661417">2/0 AWG</option>
+      <option value="0.58779528">3/0 AWG</option>
+      <option value="0.64488189">4/0 AWG</option>
+      <option value="0.71456693">250 kcmil</option>
+      <option value="0.76968504">300 kcmil</option>
+      <option value="0.81929134">350 kcmil</option>
+      <option value="0.86614173">400 kcmil</option>
+      <option value="0.9515748">500 kcmil</option>
+      <option value="1.05433071">600 kcmil</option>
+      <option value="1.18">750 kcmil</option>
+    </select>
+
+    <label for="footage">Footage you want to put on reel (ft)</label>
+    <input id="footage" type="number" step="1" placeholder="e.g. 1000">
+
+    <button id="calcBtn">Calculate</button>
+
+    <div id="capacityText" class="muted"></div>
+    <div id="fitResult" class="result" style="display:none;"></div>
+  </div>
+
+  <script>
+    const flangeInput = document.getElementById('flange');
+    const drumInput = document.getElementById('drum');          // circumference
+    const traverseInput = document.getElementById('traverse');
+    const awgSelect = document.getElementById('awg');
+    const footageInput = document.getElementById('footage');
+    const capacityText = document.getElementById('capacityText');
+    const fitResult = document.getElementById('fitResult');
+    const calcBtn = document.getElementById('calcBtn');
+
+    calcBtn.addEventListener('click', () => {
+      const A = parseFloat(flangeInput.value);       // flange diameter
+      const Bcirc = parseFloat(drumInput.value);     // drum circumference
+      const C = parseFloat(traverseInput.value);     // traverse
+      const D = parseFloat(awgSelect.value);         // cable OD from dropdown
+      const requested = parseFloat(footageInput.value);
+
+      if (!A || !Bcirc || !C || !D || !requested) {
+        alert('Please fill in flange, drum circumference, traverse, cable size, and footage.');
+        return;
+      }
+
+      // Convert circumference to diameter: B = C / π
+      const B = Bcirc / Math.PI;
+
+      if (B >= A) {
+        alert('Drum circumference is too large: the resulting diameter must be smaller than the flange diameter.');
+        return;
+      }
+
+      // F = C × (A² − B²) / (12 × D²)
+      const capacity = C * (A * A - B * B) / (12 * D * D);
+      const roundedCap = Math.round(capacity);
+
+      capacityText.textContent = `Approximate reel capacity: ${roundedCap.toLocaleString()} ft`;
+
+      if (requested <= capacity) {
+        fitResult.textContent = `✅ Yes – ${requested.toLocaleString()} ft will fit on this reel.`;
+        fitResult.className = 'result ok';
+      } else {
+        fitResult.textContent = `❌ No – ${requested.toLocaleString()} ft will NOT fit. Estimated max is about ${roundedCap.toLocaleString()} ft.`;
+        fitResult.className = 'result not-ok';
+      }
+      fitResult.style.display = 'block';
+    });
+  </script>
+</body>
+</html>
