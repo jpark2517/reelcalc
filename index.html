@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Reel Capacity Calculator</title>
-  <!-- Important for mobile -->
+  <!-- Mobile friendly -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
@@ -102,7 +102,7 @@
         flex-direction: column;
       }
       button#calcBtn {
-        width: 100%;        /* easier thumb target */
+        width: 100%;
       }
       .muted {
         font-size: 0.85rem;
@@ -117,11 +117,27 @@
     <strong>Reel factor</strong> = (H + B) × H × T × 0.262<br>
     <strong>Length (ft)</strong> = Reel factor ÷ (cable diameter in inches)²<br>
     where A = flange diameter, B = drum diameter (from circumference), T = traverse, and<br>
-    H = (A − B) / 2 − 1&quot; (assumes 1&quot; unused flange each side).
+    H = (A − B) / 2 − U, with U = unused flange clearance <em>each side</em>.
   </p>
 
   <div class="card">
     <h2>Reel Dimensions</h2>
+
+    <label for="reelPreset">Reel preset (optional)</label>
+    <select id="reelPreset">
+      <option value="">-- select reel --</option>
+      <option value="A">Reel "A" 12x8x5</option>
+      <option value="B">Reel "B" 12x11x5</option>
+      <option value="C">Reel "C" 16x11x8</option>
+      <option value="D">Reel "D" 18x14x8</option>
+      <option value="E">Reel "E" 24x12x10</option>
+      <option value="F">Reel "F" 24x16x12</option>
+      <option value="FF">Reel "FF" 24x16x12</option>
+      <option value="GG">Reel "GG" 30x18x14</option>
+      <option value="HH">Reel "HH" 32x22x14</option>
+      <option value="II">Reel "II" 36x22x18</option>
+    </select>
+
     <div class="row">
       <div>
         <label for="flange">Flange diameter A (inches)</label>
@@ -129,12 +145,18 @@
       </div>
       <div>
         <label for="traverse">Traverse / width T (inches)</label>
-    <input id="traverse" type="number" step="0.01" inputmode="decimal" placeholder="e.g. 22">
+        <input id="traverse" type="number" step="0.01" inputmode="decimal" placeholder="e.g. 22">
       </div>
     </div>
 
     <label for="drum">Drum circumference (inches)</label>
-        <input id="drum" type="number" step="0.01" inputmode="decimal" placeholder="e.g. 44">
+    <input id="drum" type="number" step="0.01" inputmode="decimal" placeholder="e.g. 44">
+
+    <label for="unusedFlange">Unused flange (each side)</label>
+    <select id="unusedFlange">
+      <option value="0.5" selected>1/2" each side</option>
+      <option value="1.0">1" each side</option>
+    </select>
   </div>
 
   <div class="card">
@@ -163,7 +185,7 @@
     </select>
 
     <label for="footage">Footage you want to put on reel (ft)</label>
-    <input id="footage" type="number" step="1" inputmode="decimal" placeholder="e.g. 1000">
+    <input id="footage" type="number" step="1" inputmode="numeric" placeholder="e.g. 1000">
 
     <button id="calcBtn">Calculate</button>
 
@@ -175,46 +197,77 @@
     const flangeInput = document.getElementById('flange');
     const drumInput = document.getElementById('drum');          // circumference
     const traverseInput = document.getElementById('traverse');
+    const unusedFlangeSelect = document.getElementById('unusedFlange');
     const awgSelect = document.getElementById('awg');
     const footageInput = document.getElementById('footage');
     const capacityText = document.getElementById('capacityText');
     const fitResult = document.getElementById('fitResult');
     const calcBtn = document.getElementById('calcBtn');
+    const reelPresetSelect = document.getElementById('reelPreset');
 
-    const UNUSED_FLANGE = 1.0;   // inches
+    // Reel presets: flange, traverse, drum DIAMETER
+    const reelPresets = {
+      A:  { flange: 12, traverse: 8,  drumDia: 5 },
+      B:  { flange: 12, traverse: 11, drumDia: 5 },
+      C:  { flange: 16, traverse: 11, drumDia: 8 },
+      D:  { flange: 18, traverse: 14, drumDia: 8 },
+      E:  { flange: 24, traverse: 12, drumDia: 10 },
+      F:  { flange: 24, traverse: 16, drumDia: 12 },
+      FF: { flange: 24, traverse: 16, drumDia: 12 }, // nailed wood version
+      GG: { flange: 30, traverse: 18, drumDia: 14 }, // nailed wood version
+      HH: { flange: 32, traverse: 22, drumDia: 14 },
+      II: { flange: 36, traverse: 22, drumDia: 18 }
+    };
+
+    // When a reel preset is selected, fill in the dimensions
+    reelPresetSelect.addEventListener('change', () => {
+      const key = reelPresetSelect.value;
+      if (!key || !reelPresets[key]) return;
+
+      const preset = reelPresets[key];
+      flangeInput.value = preset.flange;
+      traverseInput.value = preset.traverse;
+      // circumference = π * diameter
+      const circumference = preset.drumDia * Math.PI;
+      drumInput.value = circumference.toFixed(2);
+    });
 
     calcBtn.addEventListener('click', () => {
-      const A = parseFloat(flangeInput.value);   // flange diameter
-      const Bcirc = parseFloat(drumInput.value); // drum circumference
-      const T = parseFloat(traverseInput.value); // traverse
-      const D = parseFloat(awgSelect.value);     // cable OD
+      const A = parseFloat(flangeInput.value);     // flange diameter
+      const Bcirc = parseFloat(drumInput.value);   // drum circumference
+      const T = parseFloat(traverseInput.value);   // traverse
+      const D = parseFloat(awgSelect.value);       // cable OD
       const requested = parseFloat(footageInput.value);
+      const U = parseFloat(unusedFlangeSelect.value); // unused flange each side
 
-      if (!A || !Bcirc || !T || !D || !requested) {
-        alert('Please fill in flange diameter, drum circumference, traverse, cable size, and footage.');
+      if (!A || !Bcirc || !T || !D || !requested || !U) {
+        alert('Please fill in flange, traverse, drum circumference, unused flange, cable size, and footage.');
         return;
       }
 
-      const B = Bcirc / Math.PI;  // drum diameter
+      // Drum diameter from circumference: B = C / π
+      const B = Bcirc / Math.PI;
 
       if (B >= A) {
         alert('Drum circumference is too large: resulting diameter must be smaller than the flange diameter.');
         return;
       }
 
-      const H = (A - B) / 2 - UNUSED_FLANGE;
+      // Build height: H = (A − B)/2 − U
+      const H = (A - B) / 2 - U;
       if (H <= 0) {
-        alert('Dimensions leave no usable build height. Increase flange diameter or reduce drum size / unused flange.');
+        alert('Dimensions leave no usable build height. Increase flange diameter, reduce drum size, or lower unused flange.');
         return;
       }
 
+      // Quabbin reel factor and capacity
       const reelFactor = (H + B) * H * T * 0.262;
       const capacity = reelFactor / (D * D);
       const roundedCap = Math.round(capacity);
 
       capacityText.textContent =
         `Reel factor: ${reelFactor.toFixed(3)}  |  Approx. capacity: ${roundedCap.toLocaleString()} ft ` +
-        `(H = ${H.toFixed(2)}", B = ${B.toFixed(2)}", U = ${UNUSED_FLANGE.toFixed(2)}")`;
+        `(H = ${H.toFixed(2)}", B = ${B.toFixed(2)}", U = ${U.toFixed(2)}" each side)`;
 
       if (requested <= capacity) {
         fitResult.textContent = `✅ Yes – ${requested.toLocaleString()} ft will fit on this reel.`;
