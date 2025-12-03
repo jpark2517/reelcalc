@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <title>Reel Capacity Calculator</title>
+  <!-- Important for mobile -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -10,16 +13,22 @@
       margin: 40px auto;
       padding: 0 16px;
       line-height: 1.4;
+      background: #f5f5f5;
     }
     h1 {
       font-size: 1.75rem;
       margin-bottom: 0.25rem;
     }
+    h2 {
+      margin-top: 0;
+    }
     .card {
       border: 1px solid #ddd;
-      border-radius: 8px;
+      border-radius: 12px;
       padding: 16px 20px;
       margin-top: 16px;
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     label {
       display: block;
@@ -28,19 +37,21 @@
     }
     input, select {
       width: 100%;
-      padding: 6px 8px;
+      padding: 10px 10px;
       margin-top: 4px;
-      border-radius: 4px;
+      border-radius: 6px;
       border: 1px solid #ccc;
       box-sizing: border-box;
+      font-size: 1rem;
     }
     button {
       margin-top: 16px;
-      padding: 8px 14px;
-      border-radius: 6px;
+      padding: 10px 14px;
+      border-radius: 8px;
       border: none;
       cursor: pointer;
       font-weight: 600;
+      font-size: 1rem;
     }
     button#calcBtn {
       background: #2563eb;
@@ -49,7 +60,7 @@
     .result {
       margin-top: 16px;
       padding: 12px;
-      border-radius: 6px;
+      border-radius: 8px;
       font-weight: 500;
     }
     .ok {
@@ -73,23 +84,40 @@
     .row > div {
       flex: 1;
     }
+
+    /* Mobile tweaks */
+    @media (max-width: 600px) {
+      body {
+        margin: 20px auto;
+        padding: 0 12px;
+      }
+      h1 {
+        font-size: 1.4rem;
+      }
+      .card {
+        padding: 14px 14px;
+        margin-top: 12px;
+      }
+      .row {
+        flex-direction: column;
+      }
+      button#calcBtn {
+        width: 100%;        /* easier thumb target */
+      }
+      .muted {
+        font-size: 0.85rem;
+      }
+    }
   </style>
 </head>
 <body>
   <h1>Reel Capacity Calculator</h1>
   <p class="muted">
-    Uses the Quabbin Wire &amp; Cable reel factor method:<br>
+    Uses the Quabbin reel factor method:<br>
     <strong>Reel factor</strong> = (H + B) × H × T × 0.262<br>
     <strong>Length (ft)</strong> = Reel factor ÷ (cable diameter in inches)²<br>
-    where:
-    <ul class="muted">
-      <li>A = flange diameter (in)</li>
-      <li>B = drum diameter (in) (calculated from circumference)</li>
-      <li>T = traverse (in)</li>
-      <li>H = build height = (A − B) / 2 − U</li>
-      <li>U = unused flange (fixed at 1&quot;)</li>
-    </ul>
-    You enter <strong>drum circumference</strong>; the calculator converts it to diameter internally.
+    where A = flange diameter, B = drum diameter (from circumference), T = traverse, and<br>
+    H = (A − B) / 2 − 1&quot; (assumes 1&quot; unused flange each side).
   </p>
 
   <div class="card">
@@ -115,7 +143,6 @@
     <label for="awg">Cable size (AWG / kcmil)</label>
     <select id="awg">
       <option value="">-- select size --</option>
-      <!-- values are OD in inches, from your table -->
       <option value="0.2208661417">8 AWG</option>
       <option value="0.2602362205">6 AWG</option>
       <option value="0.3295275591">4 AWG</option>
@@ -154,13 +181,13 @@
     const fitResult = document.getElementById('fitResult');
     const calcBtn = document.getElementById('calcBtn');
 
-    const UNUSED_FLANGE = 1.0;   // U in inches (radial clearance)
+    const UNUSED_FLANGE = 1.0;   // inches
 
     calcBtn.addEventListener('click', () => {
       const A = parseFloat(flangeInput.value);   // flange diameter
       const Bcirc = parseFloat(drumInput.value); // drum circumference
       const T = parseFloat(traverseInput.value); // traverse
-      const D = parseFloat(awgSelect.value);     // cable OD from dropdown
+      const D = parseFloat(awgSelect.value);     // cable OD
       const requested = parseFloat(footageInput.value);
 
       if (!A || !Bcirc || !T || !D || !requested) {
@@ -168,29 +195,25 @@
         return;
       }
 
-      // Drum diameter from circumference: B = C / π
-      const B = Bcirc / Math.PI;
+      const B = Bcirc / Math.PI;  // drum diameter
 
       if (B >= A) {
         alert('Drum circumference is too large: resulting diameter must be smaller than the flange diameter.');
         return;
       }
 
-      // Build height H = (A − B)/2 − U
       const H = (A - B) / 2 - UNUSED_FLANGE;
       if (H <= 0) {
         alert('Dimensions leave no usable build height. Increase flange diameter or reduce drum size / unused flange.');
         return;
       }
 
-      // Reel factor and capacity (Quabbin method)
       const reelFactor = (H + B) * H * T * 0.262;
       const capacity = reelFactor / (D * D);
       const roundedCap = Math.round(capacity);
 
       capacityText.textContent =
-        `Reel factor: ${reelFactor.toFixed(3)}  |  ` +
-        `Approximate capacity: ${roundedCap.toLocaleString()} ft ` +
+        `Reel factor: ${reelFactor.toFixed(3)}  |  Approx. capacity: ${roundedCap.toLocaleString()} ft ` +
         `(H = ${H.toFixed(2)}", B = ${B.toFixed(2)}", U = ${UNUSED_FLANGE.toFixed(2)}")`;
 
       if (requested <= capacity) {
@@ -198,8 +221,7 @@
         fitResult.className = 'result ok';
       } else {
         fitResult.textContent =
-          `❌ No – ${requested.toLocaleString()} ft will NOT fit. ` +
-          `Estimated max is about ${roundedCap.toLocaleString()} ft.`;
+          `❌ No – ${requested.toLocaleString()} ft will NOT fit. Estimated max is about ${roundedCap.toLocaleString()} ft.`;
         fitResult.className = 'result not-ok';
       }
       fitResult.style.display = 'block';
