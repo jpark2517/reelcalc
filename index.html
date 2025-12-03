@@ -78,10 +78,10 @@
 <body>
   <h1>Reel Capacity Calculator</h1>
   <p class="muted">
-    Uses formula: F = C × (A² − B²) / (12 × D²)<br>
-    A = flange diameter (in), B = drum diameter (in), C = traverse (in), D = cable OD (in).<br>
-    You enter <strong>drum circumference</strong>, which is converted to diameter internally
-    (B = circumference / π).
+    Formula: F = C × (A² − B²) / (12 × D²)<br>
+    A = flange diameter (in), B = drum diameter (in), C = effective traverse (in), D = cable OD (in).<br>
+    You enter <strong>drum circumference</strong> (B<sub>circ</sub>), converted to diameter internally (B = B<sub>circ</sub> / π).<br>
+    <strong>Note:</strong> Effective traverse = entered traverse − 2&quot; (1&quot; unused flange on each side).
   </p>
 
   <div class="card">
@@ -89,7 +89,7 @@
     <div class="row">
       <div>
         <label for="flange">Flange diameter A (inches)</label>
-        <input id="flange" type="number" step="0.01" value="21.5">
+        <input id="flange" type="number" step="0.01" placeholder="e.g. 21.5">
       </div>
       <div>
         <label for="drum">Drum circumference B (inches)</label>
@@ -98,7 +98,7 @@
     </div>
 
     <label for="traverse">Traverse / width C (inches)</label>
-    <input id="traverse" type="number" step="0.01" value="39">
+    <input id="traverse" type="number" step="0.01" placeholder="e.g. 39">
   </div>
 
   <div class="card">
@@ -107,7 +107,7 @@
     <label for="awg">Cable size (AWG / kcmil)</label>
     <select id="awg">
       <option value="">-- select size --</option>
-      <!-- values are OD in inches -->
+      <!-- values are OD in inches from your table (approx for 750 kcmil) -->
       <option value="0.22086614">8 AWG</option>
       <option value="0.26023622">6 AWG</option>
       <option value="0.32952756">4 AWG</option>
@@ -149,12 +149,19 @@
     calcBtn.addEventListener('click', () => {
       const A = parseFloat(flangeInput.value);       // flange diameter
       const Bcirc = parseFloat(drumInput.value);     // drum circumference
-      const C = parseFloat(traverseInput.value);     // traverse
+      let Craw = parseFloat(traverseInput.value);    // raw traverse
       const D = parseFloat(awgSelect.value);         // cable OD from dropdown
       const requested = parseFloat(footageInput.value);
 
-      if (!A || !Bcirc || !C || !D || !requested) {
+      if (!A || !Bcirc || !Craw || !D || !requested) {
         alert('Please fill in flange, drum circumference, traverse, cable size, and footage.');
+        return;
+      }
+
+      // Effective traverse: subtract 1" unused on each side
+      const Ceffective = Craw - 2;
+      if (Ceffective <= 0) {
+        alert('Traverse is too small after subtracting 1 inch of unused flange on each side.');
         return;
       }
 
@@ -162,21 +169,25 @@
       const B = Bcirc / Math.PI;
 
       if (B >= A) {
-        alert('Drum circumference is too large: the resulting diameter must be smaller than the flange diameter.');
+        alert('Drum circumference is too large: resulting diameter must be smaller than the flange diameter.');
         return;
       }
 
       // F = C × (A² − B²) / (12 × D²)
-      const capacity = C * (A * A - B * B) / (12 * D * D);
+      const capacity = Ceffective * (A * A - B * B) / (12 * D * D);
       const roundedCap = Math.round(capacity);
 
-      capacityText.textContent = `Approximate reel capacity: ${roundedCap.toLocaleString()} ft`;
+      capacityText.textContent =
+        `Approximate reel capacity: ${roundedCap.toLocaleString()} ft ` +
+        `(using effective traverse ${Ceffective.toFixed(2)}" from entered ${Craw.toFixed(2)}").`;
 
       if (requested <= capacity) {
         fitResult.textContent = `✅ Yes – ${requested.toLocaleString()} ft will fit on this reel.`;
         fitResult.className = 'result ok';
       } else {
-        fitResult.textContent = `❌ No – ${requested.toLocaleString()} ft will NOT fit. Estimated max is about ${roundedCap.toLocaleString()} ft.`;
+        fitResult.textContent =
+          `❌ No – ${requested.toLocaleString()} ft will NOT fit. ` +
+          `Estimated max is about ${roundedCap.toLocaleString()} ft.`;
         fitResult.className = 'result not-ok';
       }
       fitResult.style.display = 'block';
